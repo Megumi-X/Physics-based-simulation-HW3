@@ -35,7 +35,7 @@ def create_sim(cell_num=(16, 16), bending_stiffness=0.):
         
 
 if __name__ == "__main__":
-    sim, h, frame_num, faces = create_sim()
+    sim, h, frame_num, faces = create_sim(bending_stiffness=1)
     position_list = []
     for _ in range(frame_num):
         sim.Forward(h)

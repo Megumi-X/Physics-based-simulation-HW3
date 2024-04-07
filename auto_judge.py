@@ -46,7 +46,8 @@ stretching_and_shearing_hessian_score = 2
 bending_gt = np.load("bending_gt.npy")
 bending_energy_list = []
 
-for _ in range(frame_num):
+for i in range(frame_num):
+    print(i)
     sim.Forward(h)
     def bending_energy(x): return np_real([sim.ComputeBendingEnergy(x.reshape((-1, 3)).T)])
     def bending_gradient(x): return -sim.ComputeBendingForce(x.reshape((-1, 3)).T).T.ravel()
@@ -57,14 +58,18 @@ for _ in range(frame_num):
     x0 = sim.position().T.ravel()
     bending_energy_list.append(bending_energy(x0))
     if not check_grad(stretching_and_shearing_energy, stretching_and_shearing_gradient, x0):
+        print("false ss grad")
         stretching_and_shearing_gradient_score = 0
         stretching_and_shearing_hessian_score = 0
     if not check_grad(stretching_and_shearing_gradient, stretching_and_shearing_hessian, x0):
+        print("false ss hess")
         stretching_and_shearing_hessian_score = 0
     if not check_grad(bending_energy, bending_gradient, x0):
+        print("false b grad")
         bending_gradient_score = 0
         bending_hessian_score = 0
     if not check_grad(bending_gradient, bending_hessian, x0):
+        print("false b hess")
         bending_hessian_score = 0
 if not np.isclose(np.array(bending_energy_list).ravel(), bending_gt, 1e-4, 1e-8).all():
     bending_energy_score = bending_gradient_score = bending_hessian_score = 0

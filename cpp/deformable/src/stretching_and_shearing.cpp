@@ -33,6 +33,7 @@ const Matrix3Xr Simulator::ComputeStretchingAndShearingForce(const Matrix3Xr& po
         // Derive the gradient dE/dx, where x stands for a 3x3 matrix position(Eigen::all, elements_.col(e)).
         // TODO.
         gradients[e] = Matrix3r::Zero();
+        gradients[e] = 0.005 * F * P * D_inv_[e].transpose();
         /////////////////////////////////
     }
 
@@ -60,7 +61,26 @@ const SparseMatrixXr Simulator::ComputeStretchingAndShearingHessian(const Matrix
         // Derive the Hessian d^2E/dx^2, where x stands for a column vector concatenated by the vertices x1, x2, x3.
         // (You do not need to consider the SPD projection issue.)
         // TODO.
+        Matrix2r dedx[3][3];
+        for (integer d = 0; d < 3; d++) {
+            for (integer i = 0; i < 3; i++) {
+                dedx[d][i] = (D_inv_[e].row(i).transpose() * F.row(d) + F.row(d).transpose() * D_inv_[e].row(i)) / 2;
+            }
+        }
         hess_nonzeros.push_back(Matrix9r::Zero());
+        for (integer d = 0; d < 3; d++) {
+            for (integer c = 0; c < 3; c++) {
+                for (integer i = 0; i < 3; i++) {
+                    for (integer j = 0; j < 3; j++) {
+                        const integer idx = i * 3 + d;
+                        const integer jdx = j * 3 + c;
+                        integer part_1 = (c == d) * D_inv_[e].row(j) * P * D_inv_[e].row(i).transpose();
+                        integer part_2 = dedx[d][i].reshaped().dot(C * dedx[c][j].reshaped());
+                        hess_nonzeros[e](idx, jdx) = 0.005 * (part_1 + part_2);
+                    }
+                }
+            }
+        }
         /////////////////////////////////
     }
 
