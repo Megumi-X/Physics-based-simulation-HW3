@@ -1,0 +1,5 @@
+__pycache__/
+.vscode/
+build/
+cloth_backend.egg-info/
+sim_data.npz
