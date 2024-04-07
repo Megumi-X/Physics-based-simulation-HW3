@@ -1,5 +1,6 @@
 from backend import *
 import numpy as np
+from tqdm import tqdm
 np_real = lambda x: np.array(x, dtype=np.float64).copy()
 np_integer = lambda x: np.array(x, dtype=np.int32).copy()
 
@@ -35,9 +36,9 @@ def create_sim(cell_num=(16, 16), bending_stiffness=0.):
         
 
 if __name__ == "__main__":
-    sim, h, frame_num, faces = create_sim(bending_stiffness=1)
+    sim, h, frame_num, faces = create_sim(bending_stiffness=0.5)
     position_list = []
-    for _ in range(frame_num):
+    for _ in tqdm(range(frame_num)):
         sim.Forward(h)
         position_list.append(np_real(sim.position().T))
     np.savez("sim_data.npz", position=np_real(position_list), faces=np_real(faces), frame_num=np_integer([frame_num]))
