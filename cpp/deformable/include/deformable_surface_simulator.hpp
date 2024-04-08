@@ -15,7 +15,8 @@ public:
 
 class Simulator {
 public:
-    Simulator(const Matrix2Xr& vertices, const Matrix3Xi& elements, const real density, const real bending_stiffness);
+
+    Simulator(const Matrix2Xr& vertices, const Matrix3Xi& elements, const real density, const real bending_stiffness, const bool penalty_contact = 0, const real contact_delta = 0, const real contact_stiffness = 0);
     
     void Forward(const real time_step);
     const Matrix3Xr& position() const { return position_; }
@@ -31,6 +32,9 @@ public:
     const real ComputeBendingEnergy(const Matrix3Xr& position) const;
     const Matrix3Xr ComputeBendingForce(const Matrix3Xr& position) const;
     const SparseMatrixXr ComputeBendingHessian(const Matrix3Xr& position) const;
+    const real ComputeContactEnergy(const Matrix3Xr& position) const;
+    const Matrix3Xr ComputeContactForce(const Matrix3Xr& position) const;
+    const SparseMatrixXr ComputeContactHessian(const Matrix3Xr& position) const;
 
 private:
     // x.
@@ -49,6 +53,10 @@ private:
     const real density_;
     // Coefficient of the bending energy.
     const real bending_stiffness_;
+
+    const bool penalty_contact_;
+    const real contact_delta_;
+    const real contact_stiffness_;
     // Edge data structure for computing bending.
     // triangle_edge_info_[e][i] is the i-th edge of triangle elements_.col(e), which is the vertices in index (elements_(i, e), elements_((i+1)%3, e)).
     std::vector<std::array<TriangleEdgeInfo, 3>> triangle_edge_info_;

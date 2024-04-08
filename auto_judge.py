@@ -14,7 +14,7 @@ def check_grad(f, g, x):
         x_plus += eps * test_dir
         try:
             E_plus = f(x_plus)
-            if np.isclose((E_plus - E) / eps, grad @ test_dir, 1e-3, 1e-2).all():
+            if np.isclose((E_plus - E) / eps, grad @ test_dir, 1e-4, 1e-2).all():
                 return True
             else:
                 histo.append((E_plus - E) / eps)
@@ -55,6 +55,9 @@ for i in range(frame_num):
     def stretching_and_shearing_energy(x): return np_real([sim.ComputeStretchingAndShearingEnergy(x.reshape((-1, 3)).T)])
     def stretching_and_shearing_gradient(x): return -sim.ComputeStretchingAndShearingForce(x.reshape((-1, 3)).T).T.ravel()
     def stretching_and_shearing_hessian(x): return sim.ComputeStretchingAndShearingHessian(x.reshape((-1, 3)).T).toarray()
+    def contact_energy(x): return np_real([sim.ComputeContactEnergy(x.reshape((-1, 3)).T)])
+    def contact_gradient(x): return -sim.ComputeContactForce(x.reshape((-1, 3)).T).T.ravel()
+    def contact_hessian(x): return sim.ComputeContactHessian(x.reshape((-1, 3)).T).toarray()
     x0 = sim.position().T.ravel()
     bending_energy_list.append(bending_energy(x0))
     if not check_grad(stretching_and_shearing_energy, stretching_and_shearing_gradient, x0):
@@ -71,7 +74,11 @@ for i in range(frame_num):
     if not check_grad(bending_gradient, bending_hessian, x0):
         print("false b hess")
         bending_hessian_score = 0
-if not np.isclose(np.array(bending_energy_list).ravel(), bending_gt, 7e-4, 1e-8).all():
+    if not check_grad(contact_energy, contact_gradient, x0):
+        print("false c grad")
+    if not check_grad(contact_gradient, contact_hessian, x0):
+        print("false c hess")
+if not np.isclose(np.array(bending_energy_list).ravel(), bending_gt, 1e-6, 1e-8).all():
     bending_energy_score = bending_gradient_score = bending_hessian_score = 0
 check_name = ['bending_energy_score', 'bending_gradient_score', 'bending_hessian_score', 'stretching_and_shearing_gradient_score', 'stretching_and_shearing_hessian_score']
 check_list = [bending_energy_score, bending_gradient_score, bending_hessian_score, stretching_and_shearing_gradient_score, stretching_and_shearing_hessian_score]

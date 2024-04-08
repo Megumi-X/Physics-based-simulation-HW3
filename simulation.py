@@ -4,7 +4,7 @@ from tqdm import tqdm
 np_real = lambda x: np.array(x, dtype=np.float64).copy()
 np_integer = lambda x: np.array(x, dtype=np.int32).copy()
 
-def create_sim(cell_num=(16, 16), bending_stiffness=0.):
+def create_sim(cell_num=(16, 16), bending_stiffness=0., use_penalty=False, penalty_delta=1e-3, penalty_stiffness=1e3):
     # In this homework, the area of triangle is fixed to be 0.005.
     dx = 0.1
     cloth_density = 5e-1
@@ -25,7 +25,7 @@ def create_sim(cell_num=(16, 16), bending_stiffness=0.):
                 (index(i, j + 1), index(i, j), index(i + 1, j + 1))]
     faces = np_integer(faces)
 
-    sim = Simulator(vertices.T, faces.T, cloth_density, bending_stiffness)
+    sim = Simulator(vertices.T, faces.T, cloth_density, bending_stiffness, use_penalty, penalty_delta, penalty_stiffness)
     sim_pos = sim.position()
     sim_pos[2, :] = 2
     sim.set_position(sim_pos)
@@ -36,7 +36,7 @@ def create_sim(cell_num=(16, 16), bending_stiffness=0.):
         
 
 if __name__ == "__main__":
-    sim, h, frame_num, faces = create_sim(bending_stiffness=0.5)
+    sim, h, frame_num, faces = create_sim(bending_stiffness=1., use_penalty=True)
     position_list = []
     for _ in tqdm(range(frame_num)):
         sim.Forward(h)

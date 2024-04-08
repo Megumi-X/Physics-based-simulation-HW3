@@ -5,8 +5,13 @@ namespace backend {
 namespace deformable {
 
 Simulator::Simulator(const Matrix2Xr& vertices, const Matrix3Xi& elements, const real density,
-    const real bending_stiffness) : density_(density), bending_stiffness_(bending_stiffness), elements_(elements) {
+    const real bending_stiffness, const bool penalty_contact, const real contact_delta, const real contact_stiffness)
+    : density_(density), bending_stiffness_(bending_stiffness), elements_(elements), penalty_contact_(penalty_contact), contact_delta_(contact_delta), contact_stiffness_(contact_stiffness) {
 
+    if (penalty_contact_) {
+        Assert(contact_stiffness > 0, "deformable::Simulator::Simulator", "Contact stiffness must be positive.");
+        Assert(contact_delta > 0, "deformable::Simulator::Simulator", "Contact delta must be positive.");
+    }
     // Initial position and velocity.
     // We assume the rest shape is on the XoY plane.
     const integer dof_num = static_cast<integer>(vertices.cols());
@@ -141,7 +146,9 @@ void Simulator::Forward(const real time_step) {
         energy_kinetic *= half_rho_inv_h2;
         const real energy_ss = ComputeStretchingAndShearingEnergy(x_next);
         const real energy_bending = ComputeBendingEnergy(x_next);
-        return energy_kinetic + energy_ss + energy_bending;
+        if (!penalty_contact_) return energy_kinetic + energy_ss + energy_bending;
+        const real energy_contact = ComputeContactEnergy(x_next);
+        return energy_kinetic + energy_ss + energy_bending + energy_contact;
     };
     // Its gradient.
     auto grad_E = [&](const Matrix3Xr& x_next) -> const VectorXr {
@@ -155,7 +162,9 @@ void Simulator::Forward(const real time_step) {
         gradient_kinetic *= density_ * inv_h * inv_h;
         const Matrix3Xr gradient_ss = -ComputeStretchingAndShearingForce(x_next);
         const Matrix3Xr gradient_bending = -ComputeBendingForce(x_next);
-        return (gradient_kinetic + gradient_ss + gradient_bending).reshaped();
+        if (!penalty_contact_) return (gradient_kinetic + gradient_ss + gradient_bending).reshaped();
+        const Matrix3Xr gradient_contact = -ComputeContactForce(x_next);
+        return (gradient_kinetic + gradient_ss + gradient_bending + gradient_contact).reshaped();
     };
     auto Hess_E = [&](const Matrix3Xr& x_next) -> const SparseMatrixXr {
         std::vector<Eigen::Triplet<real>> kinetic_nonzeros;
@@ -172,7 +181,9 @@ void Simulator::Forward(const real time_step) {
         const SparseMatrixXr H_kinetic = FromTriplet(3 * dof_num, 3 * dof_num, kinetic_nonzeros);
         const SparseMatrixXr H_ss = ComputeStretchingAndShearingHessian(x_next);
         const SparseMatrixXr H_bending = ComputeBendingHessian(x_next);
-        return H_kinetic + H_ss + H_bending;
+        if (!penalty_contact_) return H_kinetic + H_ss + H_bending;
+        const SparseMatrixXr H_contact = ComputeContactHessian(x_next);
+        return H_kinetic + H_ss + H_bending + H_contact;
     };
 
     Matrix3Xr xk = x0;
@@ -206,13 +217,15 @@ void Simulator::Forward(const real time_step) {
     velocity_ = (next_position - position_) * inv_h;
     position_ = next_position;
     // A simple and hard-coded contact handling.
-    for (integer i = 0; i < static_cast<integer>(position_.cols()); ++i) {
-        Vector3r point = position_.col(i);
-        const real point_norm = point.squaredNorm();
-        if (point_norm < 1) {
-            const real projected_velocity = velocity_.col(i).dot(point);
-            if (projected_velocity < 0)
-                velocity_.col(i) -= projected_velocity * point / point_norm;
+    if (!penalty_contact_) {
+        for (integer i = 0; i < static_cast<integer>(position_.cols()); ++i) {
+            Vector3r point = position_.col(i);
+            const real point_norm = point.squaredNorm();
+            if (point_norm < 1) {
+                const real projected_velocity = velocity_.col(i).dot(point);
+                if (projected_velocity < 0)
+                    velocity_.col(i) -= projected_velocity * point / point_norm;
+            }
         }
     }
 }
